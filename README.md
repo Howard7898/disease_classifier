@@ -6,7 +6,7 @@
 [![Paper](https://img.shields.io/badge/Paper-KIIT%202024-red)](docs/paper.pdf)
 [![DOI](https://img.shields.io/badge/DOI-10.14801%2Fjkiit.2024.22.2.43-blue)](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)
 
-> **📄 Research Paper**: [Binary-Relevance-based Multi-Label Classification using Medical Examination Data to Screen for Complex Illnesses in Construction and Manufacturing Workers](docs/paper.pdf)  
+> **📄 Research Paper**: [Binary-Relevance-based Multi-Label Classification using Medical Examination Data to Screen for Complex Illnesses in Construction and Manufacturing Workers](https://www.ki-it.com/xml/39836/39836.pdf)  
 > **Published in**: Journal of KIIT, Vol. 22, No. 2, pp. 43-52, February 2024  
 > **Authors**: Teh-Hao Teng, Tae-Rim Lee, Seung Hyeok Byeon, Mun-Taek Choi
 
