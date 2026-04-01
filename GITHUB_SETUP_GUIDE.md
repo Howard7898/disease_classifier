@@ -184,11 +184,10 @@ health-screening-ml/
 ├── LICENSE
 ├── QUICKSTART.md
 ├── README.md
-├── SUBMISSION_CHECKLIST.md
 ├── requirements.txt
 ├── train_classifier.py
 ├── docs/
-│   └── paper.pdf
+│   └── paper.pdf               # 📑 꼭 추가!
 └── scripts/
     ├── circul_importance_proj1.py
     ├── diabete_importance_proj1.py
@@ -198,7 +197,11 @@ health-screening-ml/
     ├── liver_importance_proj1.py
     ├── obesity_importance_proj1.py
     └── obesity_score.py
+
+# 총 파일: 9개 루트 파일 + 1개 논문 + 8개 스크립트 = 18개
 ```
+
+**중요**: 위 구조가 README.md의 "Project Structure" 섹션과 정확히 일치합니다!
 
 ## 🔄 수정사항 업데이트
 

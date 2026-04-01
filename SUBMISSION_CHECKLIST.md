@@ -63,10 +63,10 @@ health-screening-ml/
 ├── LICENSE                      ✅ 필수
 ├── .gitignore                   ✅ 필수
 ├── train_classifier.py          ✅ 필수
-├── QUICKSTART.md                👍 권장
-├── CONTRIBUTING.md              👍 권장
+├── QUICKSTART.md                ✅ 필수
+├── CONTRIBUTING.md              ✅ 필수
 │
-├── scripts/                     ✅ 필수
+├── scripts/                     ✅ 필수 (8개 Python 파일)
 │   ├── obesity_importance_proj1.py
 │   ├── liver_importance_proj1.py
 │   ├── highpressure_importance_proj1.py
@@ -76,12 +76,16 @@ health-screening-ml/
 │   ├── circul_importance_proj1.py
 │   └── obesity_score.py
 │
-├── docs/                        👍 권장
-│   ├── paper.pdf               📑 논문 원본
-│   └── methodology.md          
-│
-└── notebooks/                   💡 선택 (있으면 좋음)
-    └── exploratory_analysis.ipynb
+└── docs/                        ✅ 필수
+    └── paper.pdf               📑 논문 원본 (꼭 추가!)
+```
+
+**제외되는 폴더** (`.gitignore`가 자동 차단):
+```
+❌ data/                         # IRB 보호
+❌ results/                      # 자동 생성
+❌ venv/                         # 가상환경
+❌ __pycache__/                  # Python 캐시
 ```
 
 ## 🚫 절대 업로드하지 말 것

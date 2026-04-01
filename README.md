@@ -336,8 +336,13 @@ health-screening-ml/
 ├── README.md                           # This file
 ├── requirements.txt                    # Python dependencies
 ├── LICENSE                             # MIT License
+├── .gitignore                          # Git ignore rules
 │
-├── scripts/                            # Main classification scripts
+├── train_classifier.py                 # Unified training script
+├── QUICKSTART.md                       # Quick start guide
+├── CONTRIBUTING.md                     # Contribution guidelines
+│
+├── scripts/                            # Original classification scripts
 │   ├── obesity_importance_proj1.py
 │   ├── liver_importance_proj1.py
 │   ├── highpressure_importance_proj1.py
@@ -347,21 +352,17 @@ health-screening-ml/
 │   ├── circul_importance_proj1.py
 │   └── obesity_score.py
 │
-├── data/                               # Data directory (not included)
-│   └── health_data_total_proj1.csv    # Dataset (IRB protected)
-│
-├── results/                            # Output directory
-│   ├── importances/                    # Feature importance Excel files
-│   ├── plots/                          # Confusion matrices, ROC curves
-│   └── models/                         # Saved trained models (optional)
-│
 ├── docs/                               # Documentation
-│   ├── paper.pdf                       # Original research paper
-│   └── methodology.md                  # Detailed methodology
+│   └── paper.pdf                       # Research paper (KIIT 2024)
 │
-└── notebooks/                          # Jupyter notebooks (optional)
-    └── exploratory_analysis.ipynb
+└── data/                               # Data directory (NOT included - IRB protected)
+    └── health_data_total_proj1.csv    # Dataset (obtain separately)
 ```
+
+**Note**: 
+- `data/` folder is excluded via `.gitignore` (IRB protected)
+- `results/` folder is auto-generated when running scripts
+- Add your own `data/health_data_total_proj1.csv` to run the code
 
 ---
 
