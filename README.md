@@ -38,7 +38,7 @@ This repository contains the implementation of the research published in:
 **DOI**: [10.14801/jkiit.2024.22.2.43](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)
 
 ### 📥 Access the Paper
-- **[Full Paper PDF](docs/paper.pdf)** (Korean, included in this repository)
+- **[Full Paper PDF](https://www.ki-it.com/xml/39836/39836.pdf)** (Korean, included in this repository)
 - **[Journal Website](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)** (Official publication)
 
 ### ✍️ Citation
