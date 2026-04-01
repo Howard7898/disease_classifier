@@ -3,6 +3,12 @@
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.0%2B-orange)](https://scikit-learn.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Paper](https://img.shields.io/badge/Paper-KIIT%202024-red)](docs/paper.pdf)
+[![DOI](https://img.shields.io/badge/DOI-10.14801%2Fjkiit.2024.22.2.43-blue)](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)
+
+> **📄 Research Paper**: [Binary-Relevance-based Multi-Label Classification using Medical Examination Data to Screen for Complex Illnesses in Construction and Manufacturing Workers](docs/paper.pdf)  
+> **Published in**: Journal of KIIT, Vol. 22, No. 2, pp. 43-52, February 2024  
+> **Authors**: Teh-Hao Teng, Tae-Rim Lee, Seung Hyeok Byeon, Mun-Taek Choi
 
 ## 📋 Overview
 
@@ -18,6 +24,48 @@ This project implements a **Binary Relevance-based Multi-Label Classification** 
 - **Hyperparameter Optimization**: GridSearchCV를 통한 자동 튜닝
 - **Class Imbalance Handling**: 오버샘플링을 통한 불균형 데이터 처리
 - **Feature Importance Analysis**: 각 질환별 주요 건강 지표 분석
+
+---
+
+## 📑 Publication
+
+This repository contains the implementation of the research published in:
+
+**Title**: Binary-Relevance-based Multi-Label Classification using Medical Examination Data to Screen for Complex Illnesses in Construction and Manufacturing Workers  
+**Journal**: Journal of the Korea Institute of Information Technology (KIIT)  
+**Volume**: 22, Issue 2, Pages 43-52  
+**Published**: February 28, 2024  
+**DOI**: [10.14801/jkiit.2024.22.2.43](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)
+
+### 📥 Access the Paper
+- **[Full Paper PDF](docs/paper.pdf)** (Korean, included in this repository)
+- **[Journal Website](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)** (Official publication)
+
+### ✍️ Citation
+If you use this code or methodology in your research, please cite:
+
+```bibtex
+@article{teng2024binary,
+  title={건설-제조 현장 작업자의 복합 질환 선별을 위한 건강 검진 데이터를 사용한 이진-관련성-기반 다중 레이블 분류},
+  author={등덕호 and 이태림 and 변승혁 and 최문택},
+  journal={Journal of KIIT},
+  volume={22},
+  number={2},
+  pages={43--52},
+  year={2024},
+  month={2},
+  publisher={한국정보기술학회},
+  doi={10.14801/jkiit.2024.22.2.43}
+}
+```
+
+**English Citation**:
+```
+Teng, T.-H., Lee, T.-R., Byeon, S. H., & Choi, M.-T. (2024). 
+Binary-Relevance-based Multi-Label Classification using Medical Examination Data 
+to Screen for Complex Illnesses in Construction and Manufacturing Workers. 
+Journal of KIIT, 22(2), 43-52. doi:10.14801/jkiit.2024.22.2.43
+```
 
 ---
 
