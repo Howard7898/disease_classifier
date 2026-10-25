@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.0%2B-orange)](https://scikit-learn.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Paper](https://img.shields.io/badge/Paper-KIIT%202024-red)](docs/paper.pdf)
+[![Paper](https://img.shields.io/badge/Paper-KIIT%202024-red)](https://doi.org/10.14801/jkiit.2024.22.2.43)
 [![DOI](https://img.shields.io/badge/DOI-10.14801%2Fjkiit.2024.22.2.43-blue)](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)
 
 > **📄 Research Paper**: [Binary-Relevance-based Multi-Label Classification using Medical Examination Data to Screen for Complex Illnesses in Construction and Manufacturing Workers](https://www.ki-it.com/xml/39836/39836.pdf)  
@@ -38,7 +38,7 @@ This repository contains the implementation of the research published in:
 **DOI**: [10.14801/jkiit.2024.22.2.43](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)
 
 ### 📥 Access the Paper
-- **[Full Paper PDF](https://www.ki-it.com/xml/39836/39836.pdf)** (Korean, included in this repository)
+- **[Full Paper PDF](https://www.ki-it.com/xml/39836/39836.pdf)** (Korean, journal website)
 - **[Journal Website](http://dx.doi.org/10.14801/jkiit.2024.22.2.43)** (Official publication)
 
 ### ✍️ Citation
@@ -126,8 +126,8 @@ Python >= 3.8
 
 ### Clone Repository
 ```bash
-git clone https://github.com/yourusername/health-screening-ml.git
-cd health-screening-ml
+git clone https://github.com/Howard7898/disease_classifier.git
+cd disease_classifier
 ```
 
 ### Install Dependencies
@@ -139,39 +139,23 @@ pip install -r requirements.txt
 
 ## 🚀 Usage
 
-### 1. Train Individual Disease Classifiers
+### 1. Train a Classifier
 
-각 질환별 분류기를 독립적으로 학습:
+`train_classifier.py` trains one binary classifier per disease (Binary Relevance), with the algorithm and hyperparameter grid fixed per disease.
 
 ```bash
-# Obesity Classifier
-python obesity_importance_proj1.py
+# One disease (e.g., obesity, liver, highpressure, diabete, kidney, dyslipidemia, circul)
+python train_classifier.py --disease obesity --data data/health_data_total_proj1.csv --output results
 
-# Liver Disease Classifier
-python liver_importance_proj1.py
-
-# Hypertension Classifier
-python highpressure_importance_proj1.py
-
-# Diabetes Classifier
-python diabete_importance_proj1.py
-
-# Kidney Disease Classifier
-python kidney_importance_proj1.py
-
-# Dyslipidemia Classifier
-python dyslipidemia_importance_proj1.py
-
-# Cardiovascular Disease Classifier
-python circul_importance_proj1.py
+# All diseases at once
+python train_classifier.py --disease all --data data/health_data_total_proj1.csv --output results
 ```
 
 ### 2. Output Files
 
-각 스크립트는 다음을 생성합니다:
-- **Feature Importance Excel**: `{disease}_all_importance.xlsx`
-- **Confusion Matrix Plot**: `{disease}_n1.png`
-- **Console Output**: F1-score, Best Hyperparameters
+- **Confusion matrix**: `results/plots/{disease}_confusion_matrix.png`
+- **Feature importance**: `results/importances/{disease}_feature_importance.xlsx`
+- **Console output**: F1-score, precision, recall, specificity, best hyperparameters
 
 ---
 
@@ -332,37 +316,16 @@ Actual  N   TN     FP
 ## 📝 Project Structure
 
 ```
-health-screening-ml/
-├── README.md                           # This file
-├── requirements.txt                    # Python dependencies
-├── LICENSE                             # MIT License
-├── .gitignore                          # Git ignore rules
-│
-├── train_classifier.py                 # Unified training script
-├── QUICKSTART.md                       # Quick start guide
-├── CONTRIBUTING.md                     # Contribution guidelines
-│
-├── scripts/                            # Original classification scripts
-│   ├── obesity_importance_proj1.py
-│   ├── liver_importance_proj1.py
-│   ├── highpressure_importance_proj1.py
-│   ├── diabete_importance_proj1.py
-│   ├── kidney_importance_proj1.py
-│   ├── dyslipidemia_importance_proj1.py
-│   ├── circul_importance_proj1.py
-│   └── obesity_score.py
-│
-├── docs/                               # Documentation
-│   └── paper.pdf                       # Research paper (KIIT 2024)
-│
-└── data/                               # Data directory (NOT included - IRB protected)
-    └── health_data_total_proj1.csv    # Dataset (obtain separately)
+disease_classifier/
+├── README.md             # This file
+├── QUICKSTART.md         # Short run guide
+├── requirements.txt      # Python dependencies
+├── LICENSE               # MIT License
+├── train_classifier.py   # Training · evaluation · feature importance (all diseases)
+└── data/                 # NOT included (IRB protected) — place health_data_total_proj1.csv here
 ```
 
-**Note**: 
-- `data/` folder is excluded via `.gitignore` (IRB protected)
-- `results/` folder is auto-generated when running scripts
-- Add your own `data/health_data_total_proj1.csv` to run the code
+**Note**: the dataset is not distributed (IRB approval HS23-3). `results/` is created automatically when the script runs.
 
 ---
 
@@ -429,18 +392,6 @@ health-screening-ml/
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -449,7 +400,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Teh-Hao Teng** - Master's Student, Sungkyunkwan University
+- **Teh-Hao Teng** - M.S., Department of Intelligent Robotics, Sungkyunkwan University (first author)
 - **Tae-Rim Lee** - Ph.D. Student, Sungkyunkwan University
 - **Seung Hyeok Byeon** - R&D Director, InfinityCare Inc.
 - **Mun-Taek Choi** - Professor, Sungkyunkwan University (Corresponding Author)

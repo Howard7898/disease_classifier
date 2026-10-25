@@ -4,8 +4,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/health-screening-ml.git
-cd health-screening-ml
+git clone https://github.com/Howard7898/disease_classifier.git
+cd disease_classifier
 
 # Create virtual environment (recommended)
 python -m venv venv
