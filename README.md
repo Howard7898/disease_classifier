@@ -141,7 +141,7 @@ pip install -r requirements.txt
 
 ### 1. Train a Classifier
 
-`train_classifier.py` trains one binary classifier per disease (Binary Relevance), with the algorithm and hyperparameter grid fixed per disease.
+`train_classifier.py` trains one binary classifier per disease (Binary Relevance). Each disease uses the best algorithm reported in Table 4 of the paper, tuned by grid search over that algorithm's range in Table 3.
 
 ```bash
 # One disease (e.g., obesity, liver, highpressure, diabete, kidney, dyslipidemia, circul)
@@ -155,7 +155,7 @@ python train_classifier.py --disease all --data data/health_data_total_proj1.csv
 
 - **Confusion matrix**: `results/plots/{disease}_confusion_matrix.png`
 - **Feature importance**: `results/importances/{disease}_feature_importance.xlsx`
-- **Console output**: F1-score, precision, recall, specificity, best hyperparameters
+- **Console output**: F1-score, precision, recall (positive class), specificity, best hyperparameters
 
 ---
 
@@ -175,7 +175,7 @@ python train_classifier.py --disease all --data data/health_data_total_proj1.csv
 | Dyslipidemia | Gradient Boosting | 0.0000 | 0.0000 | 0.0000 | 0.9744 |
 | Cardiovascular | Logistic Regression | 0.0000 | 0.0000 | 0.0000 | 0.9832 |
 
-### Hyperparameter Ranges Tested
+### Hyperparameter Ranges Tested (Table 3)
 
 #### Random Forest (RF)
 ```python
@@ -221,9 +221,9 @@ python train_classifier.py --disease all --data data/health_data_total_proj1.csv
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Train-Test Split (70-30)
+# Train-Test Split (80-20)
 X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.3, random_state=42
+    X_scaled, y, test_size=0.2, random_state=42
 )
 ```
 
@@ -274,6 +274,11 @@ grid_search = GridSearchCV(
 
 grid_search.fit(X_resampled, y_resampled)
 best_clf = grid_search.best_estimator_
+
+# Test-set metrics for the positive class (label 1)
+precision, recall, f1, _ = precision_recall_fscore_support(
+    y_test, best_clf.predict(X_test), average='binary', pos_label=1, zero_division=0
+)
 ```
 
 ---
