@@ -22,7 +22,8 @@ This project implements a **Binary Relevance-based Multi-Label Classification** 
 - **Binary Relevance Approach**: 각 질환별 독립적인 이진 분류기 학습
 - **Advanced ML Algorithms**: Random Forest, Gradient Boosting, SVM, Logistic Regression
 - **Hyperparameter Optimization**: GridSearchCV를 통한 자동 튜닝
-- **Class Imbalance Handling**: 오버샘플링을 통한 불균형 데이터 처리
+- **Leak-free Evaluation**: 스케일링(및 선택 시 오버샘플링)을 교차검증 학습 폴드 안에서만 학습
+- **Two Experiment Modes**: 논문 재현(오버샘플링 없음) / 추가 개선(폴드 내부 오버샘플링)
 - **Feature Importance Analysis**: 각 질환별 주요 건강 지표 분석
 
 ---
@@ -151,10 +152,21 @@ python train_classifier.py --disease obesity --data data/health_data_total_proj1
 python train_classifier.py --disease all --data data/health_data_total_proj1.csv --output results
 ```
 
-### 2. Output Files
+### 2. Experiment Modes
 
-- **Confusion matrix**: `results/plots/{disease}_confusion_matrix.png`
-- **Feature importance**: `results/importances/{disease}_feature_importance.xlsx`
+| Experiment | Command flag | Setting | Output folder |
+|---|---|---|---|
+| Paper reproduction (default) | — | No class balancing, as stated in the paper (Sec. 4.3) | `results/paper/` |
+| Extension | `--oversample` | Random oversampling of the minority class **inside each CV training fold only** | `results/oversample/` |
+| Optional algorithm comparison | `--select-algorithm` | Grid-searches LR, SVM, RF and GB per disease and keeps the best by CV F1 on the training set | `results/<mode>_select/` |
+
+The paper's original experiment did not oversample, so results from `--oversample` are an additional experiment and should not be reported as reproductions of Table 4. The default run uses the Table 4 algorithm per disease; `--select-algorithm` re-runs the comparison step (the test set is never used for selection).
+
+### 3. Output Files
+
+- **Confusion matrix**: `results/<mode>/plots/{disease}_confusion_matrix.png`
+- **Feature importance**: `results/<mode>/importances/{disease}_feature_importance.xlsx`
+- **Summary**: `results/<mode>/{disease}_summary.csv`, `results/<mode>/all_diseases_summary.csv`
 - **Console output**: F1-score, precision, recall (positive class), specificity, best hyperparameters
 
 ---
@@ -217,32 +229,25 @@ python train_classifier.py --disease all --data data/health_data_total_proj1.csv
 
 ### 1. Data Preprocessing
 ```python
-# Feature Scaling
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Train-Test Split (80-20)
+# Train-Test Split (80-20) on the raw (unscaled) data
 X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.2, random_state=42
+    X, y, test_size=0.2, random_state=42
 )
 ```
+Scaling is **not** applied to the full dataset. The scaler is part of the model pipeline and is fitted only on training data, so the test set (and each CV validation fold) never influences it.
 
-### 2. Class Imbalance Handling
+### 2. Pipeline: Scaling and (optional) Oversampling
 ```python
-# Oversample minority class
-X_minority = X_train[y_train == 1]
-y_minority = y_train[y_train == 1]
+from imblearn.pipeline import Pipeline as ImbPipeline
+from imblearn.over_sampling import RandomOverSampler
 
-X_upsampled, y_upsampled = resample(
-    X_minority, y_minority,
-    replace=True,
-    n_samples=(y_train == 0).sum(),
-    random_state=42
-)
-
-X_resampled = np.vstack((X_train[y_train == 0], X_upsampled))
-y_resampled = np.hstack((y_train[y_train == 0], y_upsampled))
+steps = [('scaler', StandardScaler())]
+if oversample:                       # --oversample (extension experiment)
+    steps.append(('oversample', RandomOverSampler(random_state=42)))
+steps.append(('clf', classifier))
+pipeline = ImbPipeline(steps)
 ```
+With `--oversample`, the minority class is duplicated (sampling with replacement) up to the size of the majority class **inside each training fold**. Validation folds and the test set are only scaled, never oversampled, so duplicated samples cannot appear on both sides of a split.
 
 ### 3. Binary Relevance Approach
 
@@ -251,29 +256,31 @@ y_resampled = np.hstack((y_train[y_train == 0], y_upsampled))
 ```
 For each disease d in D:
     1. Create binary dataset: X_d, y_d
-    2. Handle class imbalance
-    3. Grid search for optimal hyperparameters
-    4. Train classifier_d with best params
-    5. Evaluate on test set
-    6. Extract feature importance
+    2. Split into train (80%) / test (20%)
+    3. Grid search over the pipeline with Stratified K-Fold CV on the training set
+       (scaler, and oversampler if enabled, refitted in every training fold)
+    4. Refit the best pipeline on the full training set
+    5. Evaluate once on the held-out test set
+    6. Extract feature importance (tree-based models)
 ```
 
 ### 4. Model Selection & Evaluation
 ```python
-# 10-Fold Stratified Cross-Validation
+# Stratified K-Fold on the training set (the paper states K-fold; this code uses K=10)
 cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
-# Grid Search with F1-Score optimization
+# Grid Search with F1-Score (positive class) optimization
+param_grid = {f'clf__{k}': v for k, v in table3_grid.items()}
 grid_search = GridSearchCV(
-    clf, param_grid,
+    pipeline, param_grid,
     scoring='f1',
     cv=cv,
     n_jobs=-1,
     verbose=0
 )
 
-grid_search.fit(X_resampled, y_resampled)
-best_clf = grid_search.best_estimator_
+grid_search.fit(X_train, y_train)          # raw training data, no pre-scaling
+best_clf = grid_search.best_estimator_     # scaler fitted on training data only
 
 # Test-set metrics for the positive class (label 1)
 precision, recall, f1, _ = precision_recall_fscore_support(
@@ -297,7 +304,7 @@ precision, recall, f1, _ = precision_recall_fscore_support(
 ...
 ```
 
-Excel 파일 경로: `result_importances/{disease}_all_importance.xlsx`
+Excel 파일 경로: `results/<mode>/importances/{disease}_feature_importance.xlsx`
 
 ---
 

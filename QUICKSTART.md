@@ -46,7 +46,14 @@ python train_classifier.py --disease liver --output results/
 ### Train All Diseases at Once
 
 ```bash
+# Paper reproduction (no oversampling)
 python train_classifier.py --disease all --data data/health_data_total_proj1.csv --output results/
+
+# Extension experiment: oversampling inside each CV training fold
+python train_classifier.py --disease all --data data/health_data_total_proj1.csv --output results/ --oversample
+
+# Optional: compare LR/SVM/RF/GB per disease by CV F1
+python train_classifier.py --disease all --data data/health_data_total_proj1.csv --output results/ --select-algorithm
 ```
 
 ### Command Line Arguments
@@ -57,13 +64,17 @@ python train_classifier.py --disease all --data data/health_data_total_proj1.csv
 | `--data` | Path to CSV data file | `data/health_data_total_proj1.csv` |
 | `--output` | Output directory for results | `results` |
 | `--seed` | Random seed for reproducibility | `42` |
+| `--oversample` | Extension: oversample the minority class inside each CV training fold | off (paper setting) |
+| `--select-algorithm` | Compare LR/SVM/RF/GB per disease by CV F1 instead of using Table 4 | off |
 
 ## Expected Output
 
 After running, you'll get:
 
+Results go into a subfolder per experiment (`paper`, `oversample`, `paper_select`, `oversample_select`), so the two experiments never overwrite each other:
+
 ```
-results/
+results/paper/
 ├── importances/
 │   ├── obesity_feature_importance.xlsx
 │   ├── liver_feature_importance.xlsx
@@ -80,6 +91,8 @@ results/
 
 ## Sample Output
 
+Illustrative output for the default (paper) run. The test metrics shown are the obesity values from Table 4 of the paper; the CV score and feature importances are examples only.
+
 ```
 ============================================================
 Training classifier for: OBESITY
@@ -87,9 +100,11 @@ Training classifier for: OBESITY
 
 Loading data...
 Preprocessing data...
-Training samples: 840, Test samples: 121
-Class distribution (train): [420 420]
+Training samples: 480, Test samples: 121
+Class distribution (train): [420  60]
+Oversampling: OFF (paper setting, Sec. 4.3)
 Training model with grid search...
+Algorithm: RF
 Best parameters: {'min_samples_leaf': 1, 'n_estimators': 150}
 Best CV score: 0.8234
 
@@ -101,8 +116,8 @@ Test Set Performance:
   F1-Score: 0.8519 (85.19%)
   Specificity: 0.9890
 
-Confusion matrix saved to: results/plots/obesity_confusion_matrix.png
-Feature importance saved to: results/importances/obesity_feature_importance.xlsx
+Confusion matrix saved to: results/paper/plots/obesity_confusion_matrix.png
+Feature importance saved to: results/paper/importances/obesity_feature_importance.xlsx
 
 Top 10 Important Features:
                     Importance
@@ -113,7 +128,7 @@ Weight                 0.0987
 HDL                    0.0765
 ...
 
-Results summary saved to: results/obesity_summary.csv
+Results summary saved to: results/paper/obesity_summary.csv
 
 ============================================================
 Training completed for: OBESITY

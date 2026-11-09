@@ -11,8 +11,12 @@ Institution: Sungkyunkwan University
 Date: 2024
 
 Usage:
-    python train_classifier.py --disease obesity --output results/
+    # Paper setting (no oversampling, Table 4 algorithm per disease)
     python train_classifier.py --disease all --output results/
+    # Extension: oversampling inside each CV training fold
+    python train_classifier.py --disease all --output results/ --oversample
+    # Optional: compare LR/SVM/RF/GB per disease by CV F1
+    python train_classifier.py --disease all --output results/ --select-algorithm
 """
 
 import argparse
@@ -31,7 +35,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
-from sklearn.utils import resample
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.metrics import (
     confusion_matrix,
     precision_recall_fscore_support,
@@ -84,27 +89,41 @@ class DiseaseClassifier:
         'stress': 'svm'
     }
 
-    def __init__(self, disease_name: str, random_state: int = 42):
+    def __init__(
+        self,
+        disease_name: str,
+        random_state: int = 42,
+        oversample: bool = False,
+        algorithm: str = None
+    ):
         """
         Initialize disease classifier.
         
         Args:
             disease_name: Name of disease to classify
             random_state: Random seed for reproducibility
+            oversample: If True, randomly oversample the minority class inside
+                each CV training fold (extension experiment). The paper did
+                not balance the training data (Sec. 4.3), so the default is
+                False.
+            algorithm: 'lr', 'svm', 'rf' or 'gb'. Defaults to the best
+                algorithm reported in Table 4 for this disease.
         """
         self.disease_name = disease_name
         self.random_state = random_state
+        self.oversample = oversample
         if disease_name not in self.DISEASE_ALGORITHM:
             raise ValueError(
                 f"Unknown disease '{disease_name}'. "
                 f"Choose from: {list(self.DISEASE_ALGORITHM)}"
             )
-        algorithm = self.DISEASE_ALGORITHM[disease_name]
+        algorithm = algorithm or self.DISEASE_ALGORITHM[disease_name]
+        if algorithm not in self.ALGORITHM_PARAM_GRIDS:
+            raise ValueError(f"Unknown algorithm '{algorithm}'")
         self.config = {
             'algorithm': algorithm,
             'param_grid': self.ALGORITHM_PARAM_GRIDS[algorithm]
         }
-        self.scaler = StandardScaler()
         self.best_model = None
         self.best_params = None
         
@@ -130,7 +149,12 @@ class DiseaseClassifier:
         test_size: float = 0.2
     ) -> Tuple:
         """
-        Preprocess data: scaling, train-test split, oversampling.
+        Split raw data into train and test sets.
+
+        Scaling and oversampling are NOT applied here. Both are fitted inside
+        the model pipeline (see build_pipeline), so the test set never
+        influences the scaler and duplicated minority samples never leak into
+        cross-validation validation folds.
         
         Args:
             df: Input dataframe
@@ -138,45 +162,40 @@ class DiseaseClassifier:
             test_size: Proportion of test set (paper: train 80% / test 20%)
             
         Returns:
-            Tuple of (X_resampled, y_resampled, X_test, y_test)
+            Tuple of (X_train, y_train, X_test, y_test, feature_names)
         """
         # Extract target and features
         y = df[self.disease_name]
         X = df.drop(label_columns, axis=1)
         
-        # Scale features
-        X_scaled = self.scaler.fit_transform(X)
-        
-        # Train-test split
+        # Train-test split on unscaled data
         X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y, test_size=test_size, random_state=self.random_state
+            X, y, test_size=test_size, random_state=self.random_state
         )
         
-        # Convert to DataFrames for easier handling
-        X_train = pd.DataFrame(X_train).reset_index(drop=True)
-        y_train = pd.Series(y_train).reset_index(drop=True)
-        X_test = pd.DataFrame(X_test).reset_index(drop=True)
-        y_test = pd.Series(y_test).reset_index(drop=True)
-        
-        # Handle class imbalance with oversampling
-        X_minority = X_train[y_train == 1]
-        y_minority = y_train[y_train == 1]
-        
-        if len(y_minority) > 0:
-            X_upsampled, y_upsampled = resample(
-                X_minority, y_minority,
-                replace=True,
-                n_samples=(y_train == 0).sum(),
-                random_state=self.random_state
+        return (
+            X_train.values, y_train.values.astype(int),
+            X_test.values, y_test.values.astype(int),
+            X.columns
+        )
+    
+    def build_pipeline(self) -> ImbPipeline:
+        """
+        Scaler -> (oversampler) -> classifier.
+
+        In fit, the scaler is fitted on the training data only. If
+        oversampling is enabled, the minority class is randomly oversampled
+        (with replacement) to the size of the majority class. In GridSearchCV
+        both steps are refitted separately inside each training fold;
+        validation folds and the test set are only scaled, never oversampled.
+        """
+        steps = [('scaler', StandardScaler())]
+        if self.oversample:
+            steps.append(
+                ('oversample', RandomOverSampler(random_state=self.random_state))
             )
-            
-            X_resampled = np.vstack((X_train[y_train == 0], X_upsampled))
-            y_resampled = np.hstack((y_train[y_train == 0], y_upsampled))
-        else:
-            X_resampled = X_train.values
-            y_resampled = y_train.values
-        
-        return X_resampled, y_resampled, X_test.values, y_test.values, X.columns
+        steps.append(('clf', self._get_base_classifier()))
+        return ImbPipeline(steps)
     
     def train(
         self,
@@ -198,13 +217,14 @@ class DiseaseClassifier:
         # Setup cross-validation
         cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=self.random_state)
         
-        # Get base classifier
-        base_clf = self._get_base_classifier()
+        # Pipeline: scaling (and oversampling, if enabled) refitted per CV fold
+        pipeline = self.build_pipeline()
+        param_grid = {f'clf__{k}': v for k, v in self.config['param_grid'].items()}
         
         # Grid search (F1 of the positive class, same metric for every disease)
         grid_search = GridSearchCV(
-            base_clf,
-            self.config['param_grid'],
+            pipeline,
+            param_grid,
             scoring='f1',
             cv=cv,
             n_jobs=-1,
@@ -214,7 +234,9 @@ class DiseaseClassifier:
         grid_search.fit(X_train, y_train)
         
         self.best_model = grid_search.best_estimator_
-        self.best_params = grid_search.best_params_
+        self.best_params = {
+            k.replace('clf__', '', 1): v for k, v in grid_search.best_params_.items()
+        }
         
         return {
             'best_params': self.best_params,
@@ -273,9 +295,10 @@ class DiseaseClassifier:
         Returns:
             DataFrame with feature importance sorted
         """
-        if hasattr(self.best_model, 'feature_importances_'):
+        clf = self.best_model.named_steps['clf']
+        if hasattr(clf, 'feature_importances_'):
             importance_df = pd.DataFrame(
-                self.best_model.feature_importances_,
+                clf.feature_importances_,
                 index=feature_names,
                 columns=['Importance']
             )
@@ -312,7 +335,9 @@ def train_single_disease(
     disease_name: str,
     data_path: str,
     output_dir: str,
-    random_state: int = 42
+    random_state: int = 42,
+    oversample: bool = False,
+    select_algorithm: bool = False
 ):
     """
     Train classifier for a single disease.
@@ -322,6 +347,9 @@ def train_single_disease(
         data_path: Path to CSV data file
         output_dir: Directory to save results
         random_state: Random seed
+        oversample: Oversample the minority class inside CV training folds
+        select_algorithm: Compare LR/SVM/RF/GB by CV F1 on the training set
+            and keep the best one, instead of using the Table 4 algorithm
     """
     print(f"\n{'='*60}")
     print(f"Training classifier for: {disease_name.upper()}")
@@ -353,21 +381,41 @@ def train_single_disease(
     label_columns = ['obesity', 'liver', 'highpressure', 'diabete', 
                      'kidney', 'dyslipidemia', 'circul', 'musculoskeletal', 'stress']
     
-    # Initialize classifier
-    classifier = DiseaseClassifier(disease_name, random_state)
+    # Initialize classifier (Table 4 algorithm unless selection is requested)
+    classifier = DiseaseClassifier(disease_name, random_state, oversample)
     
-    # Preprocess
+    # Preprocess (split only; scaling/oversampling live in the pipeline)
     print("Preprocessing data...")
     X_train, y_train, X_test, y_test, feature_names = classifier.preprocess_data(
         df, label_columns
     )
     
     print(f"Training samples: {len(y_train)}, Test samples: {len(y_test)}")
-    print(f"Class distribution (train): {np.bincount(y_train.astype(int))}")
+    print(f"Class distribution (train): {np.bincount(y_train, minlength=2)}")
+    if oversample:
+        print("Oversampling: ON (minority class, inside each CV training fold only)")
+    else:
+        print("Oversampling: OFF (paper setting, Sec. 4.3)")
     
     # Train
-    print("Training model with grid search...")
-    train_results = classifier.train(X_train, y_train)
+    algorithm_cv_scores = {}
+    if select_algorithm:
+        # Paper-style comparison: all four algorithms, chosen by CV F1 on the
+        # training set only (the test set is never used for selection)
+        print("Comparing LR / SVM / RF / GB with grid search...")
+        best = None
+        for algo in DiseaseClassifier.ALGORITHM_PARAM_GRIDS:
+            candidate = DiseaseClassifier(disease_name, random_state, oversample, algo)
+            result = candidate.train(X_train, y_train)
+            algorithm_cv_scores[algo] = round(float(result['best_score']), 4)
+            print(f"  {algo.upper():>3}: CV F1 = {result['best_score']:.4f}  {result['best_params']}")
+            if best is None or result['best_score'] > best[1]['best_score']:
+                best = (candidate, result)
+        classifier, train_results = best
+    else:
+        print("Training model with grid search...")
+        train_results = classifier.train(X_train, y_train)
+    print(f"Algorithm: {classifier.config['algorithm'].upper()}")
     print(f"Best parameters: {train_results['best_params']}")
     print(f"Best CV score: {train_results['best_score']:.4f}")
     
@@ -397,6 +445,10 @@ def train_single_disease(
     # Save results summary
     results_summary = {
         'disease': disease_name,
+        'experiment': 'oversample' if oversample else 'paper',
+        'algorithm': classifier.config['algorithm'],
+        'algorithm_selected_by_cv': select_algorithm,
+        'algorithm_cv_scores': algorithm_cv_scores or None,
         'best_params': train_results['best_params'],
         'cv_score': train_results['best_score'],
         'test_precision': eval_results['precision'],
@@ -420,7 +472,9 @@ def train_single_disease(
 def train_all_diseases(
     data_path: str,
     output_dir: str,
-    random_state: int = 42
+    random_state: int = 42,
+    oversample: bool = False,
+    select_algorithm: bool = False
 ):
     """
     Train classifiers for all diseases.
@@ -439,7 +493,10 @@ def train_all_diseases(
     
     for disease in diseases:
         try:
-            result = train_single_disease(disease, data_path, output_dir, random_state)
+            result = train_single_disease(
+                disease, data_path, output_dir, random_state,
+                oversample, select_algorithm
+            )
             all_results.append(result)
         except Exception as e:
             print(f"Error training {disease}: {str(e)}")
@@ -487,8 +544,26 @@ def main():
         default=42,
         help='Random seed'
     )
+    parser.add_argument(
+        '--oversample',
+        action='store_true',
+        help='Extension experiment: oversample the minority class inside '
+             'each CV training fold (the paper did not balance the data)'
+    )
+    parser.add_argument(
+        '--select-algorithm',
+        action='store_true',
+        help='Compare LR/SVM/RF/GB per disease by CV F1 instead of using '
+             'the Table 4 algorithm'
+    )
     
     args = parser.parse_args()
+    
+    # Keep the two experiments apart: results/paper/... vs results/oversample/...
+    experiment = 'oversample' if args.oversample else 'paper'
+    if args.select_algorithm:
+        experiment += '_select'
+    output_dir = str(Path(args.output) / experiment)
     
     # Set random seeds
     np.random.seed(args.seed)
@@ -497,13 +572,20 @@ def main():
     print("BINARY RELEVANCE MULTI-LABEL HEALTH SCREENING CLASSIFIER")
     print("="*80)
     print(f"Data file: {args.data}")
-    print(f"Output directory: {args.output}")
+    print(f"Output directory: {output_dir}")
     print(f"Random seed: {args.seed}")
+    print(f"Experiment: {experiment}")
     
     if args.disease.lower() == 'all':
-        train_all_diseases(args.data, args.output, args.seed)
+        train_all_diseases(
+            args.data, output_dir, args.seed,
+            args.oversample, args.select_algorithm
+        )
     else:
-        train_single_disease(args.disease.lower(), args.data, args.output, args.seed)
+        train_single_disease(
+            args.disease.lower(), args.data, output_dir, args.seed,
+            args.oversample, args.select_algorithm
+        )
     
     print("\n" + "="*80)
     print("TRAINING COMPLETED SUCCESSFULLY!")
