@@ -11,8 +11,8 @@ Institution: Sungkyunkwan University
 Date: 2024
 
 Usage:
-    python train_classifier.py --disease obesity --output_dir results/
-    python train_classifier.py --disease all --output_dir results/
+    python train_classifier.py --disease obesity --output results/
+    python train_classifier.py --disease all --output results/
 """
 
 import argparse
@@ -49,82 +49,41 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 class DiseaseClassifier:
     """Binary classifier for a single disease using Binary Relevance approach."""
     
-    DISEASE_CONFIG = {
-        'obesity': {
-            'algorithm': 'rf',
-            'param_grid': {
-                'n_estimators': [70, 80, 90],
-                'min_samples_leaf': [1, 2]
-            }
+    # Table 3 (paper): hyperparameter search range per algorithm
+    ALGORITHM_PARAM_GRIDS = {
+        'lr': {
+            'C': [0.01, 0.1, 1],
+            'solver': ['newton-cg', 'lbfgs', 'liblinear']
         },
-        'liver': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'n_estimators': [30, 40, 50],
-                'max_features': ['sqrt'],
-                'max_depth': [9, 10, 11],
-                'min_samples_split': [2, 3, 4],
-                'min_samples_leaf': [1, 2]
-            }
+        'svm': {
+            'C': [0.1, 1, 10],
+            'kernel': ['poly', 'rbf', 'sigmoid'],
+            'gamma': ['scale', 'auto']
         },
-        'highpressure': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'n_estimators': [10, 20, 30],
-                'max_depth': [7, 8, 9, 10, 12],
-                'min_samples_split': [1, 2, 3, 4, 5],
-                'min_samples_leaf': [1, 2, 3, 4]
-            }
+        'rf': {
+            'n_estimators': [100, 150, 200],
+            'min_samples_leaf': [1, 2, 3]
         },
-        'diabete': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'n_estimators': [10, 20],
-                'min_samples_leaf': [1, 2, 3]
-            }
-        },
-        'kidney': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'n_estimators': [30, 40, 50],
-                'max_features': ['sqrt'],
-                'max_depth': [5, 6, 7],
-                'min_samples_split': [1, 2, 3],
-                'min_samples_leaf': [1, 2]
-            }
-        },
-        'dyslipidemia': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'n_estimators': [40, 50, 60],
-                'min_samples_leaf': [1, 2]
-            }
-        },
-        'circul': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'n_estimators': [10, 20],
-                'min_samples_leaf': [1, 2]
-            }
-        },
-        'musculoskeletal': {
-            'algorithm': 'gb',
-            'param_grid': {
-                'learning_rate': [0.001],
-                'min_samples_split': [2],
-                'n_estimators': [50]
-            }
-        },
-        'stress': {
-            'algorithm': 'svm',
-            'param_grid': {
-                'C': [10],
-                'gamma': ['scale'],
-                'kernel': ['sigmoid']
-            }
+        'gb': {
+            'learning_rate': [0.001, 0.01, 0.1],
+            'min_samples_split': [2, 3, 4],
+            'n_estimators': [50, 100, 150]
         }
     }
-    
+
+    # Table 4 (paper): best algorithm per disease
+    DISEASE_ALGORITHM = {
+        'obesity': 'rf',
+        'liver': 'gb',
+        'highpressure': 'gb',
+        'diabete': 'gb',
+        'kidney': 'gb',
+        'dyslipidemia': 'gb',
+        'circul': 'lr',
+        'musculoskeletal': 'gb',
+        'stress': 'svm'
+    }
+
     def __init__(self, disease_name: str, random_state: int = 42):
         """
         Initialize disease classifier.
@@ -135,7 +94,16 @@ class DiseaseClassifier:
         """
         self.disease_name = disease_name
         self.random_state = random_state
-        self.config = self.DISEASE_CONFIG.get(disease_name, self.DISEASE_CONFIG['obesity'])
+        if disease_name not in self.DISEASE_ALGORITHM:
+            raise ValueError(
+                f"Unknown disease '{disease_name}'. "
+                f"Choose from: {list(self.DISEASE_ALGORITHM)}"
+            )
+        algorithm = self.DISEASE_ALGORITHM[disease_name]
+        self.config = {
+            'algorithm': algorithm,
+            'param_grid': self.ALGORITHM_PARAM_GRIDS[algorithm]
+        }
         self.scaler = StandardScaler()
         self.best_model = None
         self.best_params = None
@@ -159,7 +127,7 @@ class DiseaseClassifier:
         self,
         df: pd.DataFrame,
         label_columns: list,
-        test_size: float = 0.3
+        test_size: float = 0.2
     ) -> Tuple:
         """
         Preprocess data: scaling, train-test split, oversampling.
@@ -167,7 +135,7 @@ class DiseaseClassifier:
         Args:
             df: Input dataframe
             label_columns: List of all disease label columns
-            test_size: Proportion of test set
+            test_size: Proportion of test set (paper: train 80% / test 20%)
             
         Returns:
             Tuple of (X_resampled, y_resampled, X_test, y_test)
@@ -233,14 +201,11 @@ class DiseaseClassifier:
         # Get base classifier
         base_clf = self._get_base_classifier()
         
-        # Determine scoring metric
-        scoring = 'f1_weighted' if self.config['algorithm'] == 'gb' and self.disease_name == 'circul' else 'f1'
-        
-        # Grid search
+        # Grid search (F1 of the positive class, same metric for every disease)
         grid_search = GridSearchCV(
             base_clf,
             self.config['param_grid'],
-            scoring=scoring,
+            scoring='f1',
             cv=cv,
             n_jobs=-1,
             verbose=0
@@ -274,13 +239,13 @@ class DiseaseClassifier:
         """
         y_pred = self.best_model.predict(X_test)
         
-        # Calculate metrics
+        # Calculate metrics for the positive class (label 1), as in the paper
         precision, recall, f1, _ = precision_recall_fscore_support(
-            y_test, y_pred, average='weighted', zero_division=0
+            y_test, y_pred, average='binary', pos_label=1, zero_division=0
         )
         
-        # Confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
+        # Confusion matrix (fixed label order: 0 = negative, 1 = positive)
+        cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
         
         # Specificity (for binary classification)
         if cm.shape == (2, 2):
