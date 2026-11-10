@@ -292,17 +292,7 @@ precision, recall, f1, _ = precision_recall_fscore_support(
 
 ## 📊 Feature Importance
 
-각 질환별 상위 중요 특징이 Excel 파일로 저장됩니다:
-
-### Example: Obesity Feature Importance
-```
-1. BMI (Body Mass Index)
-2. Waist Circumference
-3. Triglycerides
-4. Weight
-5. HDL Cholesterol
-...
-```
+트리 기반 모델(RF, GB)을 사용하는 질환은 특징 중요도가 Excel 파일로 저장됩니다. 중요도 순위는 실행 결과에 따라 결정되며, 논문에는 질환별 특징 중요도 순위가 보고되어 있지 않습니다.
 
 Excel 파일 경로: `results/<mode>/importances/{disease}_feature_importance.xlsx`
 
@@ -321,7 +311,7 @@ Actual  N   TN     FP
 ```
 
 ### ROC-AUC Curves
-논문에 포함된 ROC 곡선으로 모델 성능을 시각화합니다.
+논문 그림 2에 질환별 ROC-AUC 곡선이 제시되어 있습니다. 현재 `train_classifier.py`는 ROC 곡선을 생성하지 않으며, 혼동 행렬만 저장합니다.
 
 ---
 
@@ -343,21 +333,25 @@ disease_classifier/
 
 ## 🔍 Key Insights
 
-### 1. High Performance Diseases
-- **Obesity** (F1: 0.85): 비만은 BMI, 허리둘레 등 명확한 지표로 높은 정확도
-- **Musculoskeletal Imbalance** (F1: 0.84): 근골격 불균형도 높은 예측 성능
-- **Liver Disease** (F1: 0.77): 간 효소 지표로 양호한 성능
+아래 내용은 논문 표 4와 4.2·4.3절의 결과를 요약한 것입니다.
 
-### 2. Challenging Diseases
-- **Diabetes** (F1: 0.00): 샘플 수 부족으로 예측 실패
-- **Dyslipidemia** (F1: 0.00): 데이터 불균형 심각
-- **Cardiovascular** (F1: 0.00): 추가 특징 엔지니어링 필요
+### 1. 양성 예측이 비교적 양호한 질환
+- **Obesity** (RF, F1: 0.8519, SP: 0.9890): 양성과 음성 모두 높은 수준으로 예측
+- **Liver Disease** (GB, F1: 0.7692, SP: 0.9798)
+- **Kidney Disease** (GB, F1: 0.7368, SP: 1.0000)
 
-### 3. Model Selection Patterns
-- **Random Forest**: 비만 (안정적 성능)
-- **Gradient Boosting**: 대부분 질환 (높은 정확도)
-- **SVM**: 스트레스 (비선형 패턴 포착)
-- **Logistic Regression**: 순환기 질환 (단순 선형 관계)
+### 2. 해석에 주의가 필요한 질환
+- **Musculoskeletal Imbalance** (GB, F1: 0.8421, SP: 0.0000): 양성은 모두 맞혔지만(Recall 1.0000) 음성은 하나도 맞히지 못함. 사실상 대부분을 양성으로 예측한 결과로, F1만으로 성능이 높다고 보기 어려움
+
+### 3. 양성 예측이 낮은 질환
+- **Diabetes**, **Dyslipidemia**, **Cardiovascular** (F1: 0.0000): 양성은 하나도 맞히지 못했지만 음성 예측(SP)은 0.97 이상
+- **Stress** (SVM, F1: 0.3188), **Hypertension** (GB, F1: 0.6250)
+
+### 4. 종합 (논문 4.3절)
+- 양성 예측률이 낮은 질환이 많아 실제 임상 적용에는 충분하지 않은 수준
+- 음성 예측 성능은 매우 높은 편이어서 초기 분석 모델로서 의미가 있음
+- 수집된 데이터는 레이블 간 불균형 상태이며, 혼동 행렬을 제시한 비만·간 질환·고혈압(표 5~7)에서는 양성 데이터가 음성보다 크게 적음
+- LR·SVM·RF·GB를 그리드 서치로 학습하고, 최적 파라미터를 적용한 모델의 성능을 테스트 세트 기준으로 평가해 질환별 최고 모델을 표 4에 제시
 
 ---
 
@@ -396,11 +390,15 @@ disease_classifier/
 }
 ```
 
-### Key Literature
-1. **Binary Relevance**: Zhang & Zhou (2014) - "A Review on Multi-Label Learning Algorithms"
-2. **Random Forests**: Breiman (2001) - "Random Forests"
-3. **Gradient Boosting**: Friedman (2001) - "Greedy Function Approximation"
-4. **Class Imbalance**: Chawla et al. (2002) - "SMOTE: Synthetic Minority Over-sampling"
+### Key Literature (cited in the paper)
+1. **Binary Relevance** [8]: Alvares-Cherman, Metz & Monard (2012) - "Incorporating label dependency into the binary relevance framework for multi-label classification", *Expert Systems with Applications*
+2. **Logistic Regression** [10]: Dreiseitl & Ohno-Machado (2002) - "Logistic regression and artificial neural network classification models: a methodology review", *Journal of Biomedical Informatics*
+3. **Support Vector Machines** [11]: Awad & Khanna (2015) - "Support vector machines for classification", *Efficient Learning Machines*
+4. **Random Forests** [12]: Breiman (2001) - "Random forests", *Machine Learning*
+5. **Gradient Boosting** [13]: Friedman (2002) - "Stochastic gradient boosting", *Computational Statistics & Data Analysis*
+6. **Imbalanced Multi-Label Classification** [5]: Tarekegn, Giacobini & Michalak (2021) - "A review of methods for imbalanced multi-label classification", *Pattern Recognition*
+
+Numbers in brackets are the reference numbers in the paper.
 
 ---
 
@@ -412,7 +410,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Teh-Hao Teng** - M.S., Department of Intelligent Robotics, Sungkyunkwan University (first author)
+- **Teh-Hao Teng** - M.S. in Intelligent Robotics, Sungkyunkwan University (2025) (first author)
 - **Tae-Rim Lee** - Ph.D. Student, Sungkyunkwan University
 - **Seung Hyeok Byeon** - R&D Director, InfinityCare Inc.
 - **Mun-Taek Choi** - Professor, Sungkyunkwan University (Corresponding Author)
