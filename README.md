@@ -410,7 +410,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Teh-Hao Teng** - M.S., Department of Intelligent Robotics, Sungkyunkwan University (first author)
+- **Teh-Hao Teng** - M.S. in Intelligent Robotics, Sungkyunkwan University (2025) (first author)
 - **Tae-Rim Lee** - Ph.D. Student, Sungkyunkwan University
 - **Seung Hyeok Byeon** - R&D Director, InfinityCare Inc.
 - **Mun-Taek Choi** - Professor, Sungkyunkwan University (Corresponding Author)
